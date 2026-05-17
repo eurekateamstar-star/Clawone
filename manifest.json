@@ -1,0 +1,20 @@
+{
+  "name": "小抓抓台主助手",
+  "short_name": "小抓抓",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#FFF9F0",
+  "theme_color": "#FB923C",
+  "icons": [
+    {
+      "src": "icon.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
