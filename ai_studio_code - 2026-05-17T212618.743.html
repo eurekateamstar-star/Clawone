@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>小抓抓台主助手</title>
+<!-- 讓手機識別這是 Web App -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="小抓抓">
+
+<!-- iPhone 的圖示 -->
+<link rel="apple-touch-icon" href="icon.jpg">
+
+<!-- Android 的圖示與設定 -->
+<link rel="manifest" href="manifest.json">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #FFF9F0; display: flex; justify-content: center; height: 100vh; overflow: hidden; color: #5C4033; }
+        #app-container { width: 100%; max-width: 480px; height: 100%; background-color: #FFF9F0; position: relative; display: flex; flex-direction: column; }
+        .header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: #FFEDD5; border-radius: 0 0 25px 25px; box-shadow: 0 4px 0 #FED7AA; z-index: 10; }
+        .avatar { width: 40px; height: 40px; background: #FB923C; border: 2px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; }
+        .user-name { font-size: 20px; font-weight: 900; color: #7C2D12; margin-left: 12px; }
+        .header-warehouse-btn { font-size: 24px; color: #FB923C; background: white; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 15px; box-shadow: 0 4px 0 #FED7AA; cursor: pointer; }
+        
+        /* 增加底部留白，避免按鈕被導覽列遮住 */
+        .content-area { flex: 1; overflow-y: auto; padding-bottom: 220px; -webkit-overflow-scrolling: touch; }
+        
+        .page { display: none; animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .page.active { display: block; }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .hero-card { background: #FFF; border-radius: 35px; padding: 25px; margin: 15px 20px; box-shadow: 0 8px 0 #E5E7EB; border: 3px solid #F3F4F6; }
+        .hero-label { font-size: 15px; color: #9A3412; font-weight: 800; margin-bottom: 8px; }
+        .hero-amount { font-size: 50px; font-weight: 900; color: #EA580C; letter-spacing: -2px; }
+        .hero-stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 20px; padding-top: 15px; border-top: 3px dashed #FED7AA; }
+        .h-stat-item .label { font-size: 12px; color: #A8A29E; font-weight: 800; margin-bottom: 4px; }
+        .h-stat-item .val { font-size: 20px; font-weight: 900; }
+        .section-header { padding: 20px 25px 12px 25px; font-size: 22px; font-weight: 900; color: #7C2D12; display: flex; align-items: center; justify-content: space-between; }
+        .history-nav { display: flex; align-items: center; gap: 8px; }
+        .history-btn { width: 32px; height: 32px; background: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 0 #FED7AA; color: #FB923C; cursor: pointer; }
+        .record-item { background: white; padding: 18px; border-radius: 25px; display: flex; align-items: center; margin-bottom: 12px; border: 3px solid #FFF7ED; }
+        .record-info { flex: 1; }
+        .record-name { font-weight: 900; font-size: 16px; }
+        .record-date { font-size: 12px; color: #A8A29E; font-weight: 800; }
+        .record-val { font-size: 18px; font-weight: 900; white-space: nowrap; }
+        .status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 10px 20px; }
+        .status-card { background: white; border-radius: 25px; padding: 15px; text-align: center; border: 3px solid #FEF3C7; box-shadow: 0 5px 0 #FEF3C7; }
+        .status-card .label { font-size: 13px; color: #B45309; font-weight: 800; margin-bottom: 6px; }
+        .status-card .count { font-size: 24px; font-weight: 900; color: #78350F; }
+        .status-full { grid-column: span 2; display: flex; align-items: center; justify-content: flex-start; padding-left: 25px; }
+        .form-list { background: white; border-radius: 30px; margin: 0 20px; overflow: hidden; border: 3px solid #FFEDD5; box-shadow: 0 6px 0 #FFEDD5; }
+        .form-row { padding: 20px; border-bottom: 2px solid #FFF7ED; }
+        .form-row:last-child { border-bottom: none; }
+        .row-content label { font-size: 13px; color: #FB923C; font-weight: 900; display: block; margin-bottom: 8px; }
+        .row-content input { border: none; outline: none; font-size: 26px; font-weight: 900; color: #431407; width: 100%; background: transparent; }
+        .row-content input[type="text"] { font-size: 22px; }
+        .btn-submit { width: calc(100% - 40px); margin: 25px 20px 10px 20px; padding: 20px; background: #FB923C; color: white; border: none; border-radius: 25px; font-size: 22px; font-weight: 900; box-shadow: 0 8px 0 #EA580C; cursor: pointer; display: block; }
+        .bottom-nav { position: absolute; bottom: 0; left: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 12px 5px 40px 5px; border-radius: 35px 35px 0 0; box-shadow: 0 -8px 25px rgba(0,0,0,0.05); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #D6D3D1; font-weight: 900; cursor: pointer; font-size: 11px; }
+        .nav-item.active { color: #FB923C; }
+
+        /* Modals */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(4px); }
+        #custom-modal-overlay { z-index: 30000 !important; }
+
+        .modal-box { background: #FFF9F0; width: 85%; max-width: 320px; border-radius: 35px; padding: 30px 25px; text-align: center; border: 4px solid #FFEDD5; box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
+        .modal-footer { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
+        .btn-modal { padding: 12px 28px; border-radius: 18px; font-size: 16px; font-weight: 900; border: none; cursor: pointer; }
+        .btn-modal-ok { background: #FB923C; color: white; box-shadow: 0 4px 0 #EA580C; }
+        .btn-modal-cancel { background: #F3F4F6; color: #6B7280; box-shadow: 0 4px 0 #D1D5DB; }
+
+        /* Bottom sheets */
+        .bottom-sheet { background: #FFF9F0; width: 95%; max-width: 450px; border-radius: 35px 35px 0 0; position: fixed; bottom: 0; display: flex; flex-direction: column; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .sheet-header { padding: 20px 25px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px dashed #FED7AA; flex-shrink: 0; }
+        .sheet-title { font-size: 22px; font-weight: 900; color: #7C2D12; }
+        .close-btn { width: 36px; height: 36px; background: #FB923C; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+
+        /* Warehouse */
+        #warehouse-overlay { z-index: 20000; }
+        #wh-sheet { height: 90vh; }
+        .wh-tabs { display: flex; gap: 8px; padding: 12px 15px 0; flex-shrink: 0; }
+        .wh-tab { flex: 1; padding: 10px; text-align: center; font-weight: 900; font-size: 14px; border-radius: 15px; cursor: pointer; border: 3px solid #F3F4F6; background: white; color: #A8A29E; }
+        .wh-tab.active { background: #FB923C; color: white; border-color: #FB923C; box-shadow: 0 3px 0 #EA580C; }
+        .wh-scroll { flex: 1; overflow-y: auto; }
+        .wh-grid { padding: 12px 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .inv-item { border-radius: 20px; border: 3px solid #F3F4F6; position: relative; overflow: hidden; display: flex; flex-direction: column; background: white; }
+        .inv-item.used-out { background: #F0F0F0; border-color: #D1D5DB; }
+        .inv-item-img { width: 100%; height: 110px; object-fit: cover; }
+        .inv-item.used-out .inv-item-img { filter: grayscale(100%) opacity(0.5); }
+        .inv-item-info { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+        .inv-badge { display: inline-block; font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: 8px; margin-bottom: 3px; align-self: flex-start; }
+        .badge-in  { background: #D1FAE5; color: #065F46; }
+        .badge-out { background: #E5E7EB; color: #6B7280; }
+        .badge-sold { background: #DBEAFE; color: #1E3A8A; }
+        .inv-name { font-weight: 900; font-size: 13px; }
+        .inv-item.used-out .inv-name { color: #9CA3AF; }
+        .inv-price { font-weight: 900; color: #EF4444; font-size: 13px; }
+        .inv-item.used-out .inv-price { color: #D1D5DB; }
+        .inv-date { font-size: 10px; color: #A8A29E; font-weight: 800; }
+        .del-btn-mini { position: absolute; bottom: 7px; right: 7px; color: #FCA5A5; font-size: 13px; background: rgba(255,255,255,0.9); width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; }
+        .restore-btn-mini { position: absolute; bottom: 7px; right: 38px; color: #10B981; font-size: 13px; background: rgba(255,255,255,0.9); width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; }
+
+        /* Colors */
+        .text-green  { color: #10B981; }
+        .text-red    { color: #EF4444; }
+        .text-blue   { color: #3B82F6; }
+        .text-purple { color: #8B5CF6; }
+        .text-orange { color: #FB923C; }
+    </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- Alert/Confirm -->
+<div id="custom-modal-overlay" class="modal-overlay">
+    <div class="modal-box">
+        <div id="modal-msg"></div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-modal-cancel" id="modal-btn-cancel" style="display:none;">取消</button>
+            <button class="btn-modal btn-modal-ok" id="modal-btn-ok">好！</button>
+        </div>
+    </div>
+</div>
+
+<!-- 倉庫 -->
+<div id="warehouse-overlay" class="modal-overlay" style="align-items:flex-end;">
+    <div id="wh-sheet" class="bottom-sheet">
+        <div class="sheet-header">
+            <div class="sheet-title">📦 我的大倉庫</div>
+            <div class="close-btn" onclick="closeWarehouse()"><i class="fa-solid fa-xmark" style="color:white;font-size:17px;"></i></div>
+        </div>
+        <div class="wh-tabs">
+            <div id="wh-tab-in"  class="wh-tab active" onclick="switchWHTab('in')">🟢 在庫</div>
+            <div id="wh-tab-out" class="wh-tab"        onclick="switchWHTab('out')">⚫ 已出庫</div>
+        </div>
+        <div class="wh-scroll">
+            <div id="wh-grid-in"  class="wh-grid"></div>
+            <div id="wh-grid-out" class="wh-grid" style="display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 統計圖表彈窗 -->
+<div id="chart-overlay" class="modal-overlay" style="align-items:flex-end;">
+    <div id="chart-sheet" class="bottom-sheet" style="height: 80vh;">
+        <div class="sheet-header">
+            <div class="sheet-title">📊 數據趨勢</div>
+            <div class="close-btn" onclick="closeChart()"><i class="fa-solid fa-xmark" style="color:white;font-size:17px;"></i></div>
+        </div>
+        <div style="padding: 12px 15px 0;">
+            <div style="display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; border: 3px solid #F3F4F6; padding: 5px;">
+                <div style="width: 40px; height: 35px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #FB923C; font-size: 18px;" onclick="changeChartOffset(-1)"><i class="fa-solid fa-chevron-left"></i></div>
+                <div style="display: flex; gap: 8px; flex: 1; justify-content: center;">
+                    <div id="chart-tab-week"  class="wh-tab active" style="padding: 6px 15px;" onclick="switchChartTab('week')">週</div>
+                    <div id="chart-tab-month" class="wh-tab" style="padding: 6px 15px;" onclick="switchChartTab('month')">月</div>
+                </div>
+                <div id="chart-btn-next" style="width: 40px; height: 35px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #D1D5DB; font-size: 18px;" onclick="changeChartOffset(1)"><i class="fa-solid fa-chevron-right"></i></div>
+            </div>
+            <div id="chart-date-range" style="text-align: center; font-size: 12px; color: #A8A29E; font-weight: 900; margin-top: 8px;"></div>
+        </div>
+        <div style="flex:1; padding: 10px 20px 20px 20px; position: relative; min-height: 300px;">
+            <canvas id="analyticsChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- 歷史檔次彈窗 -->
+<div id="history-overlay" class="modal-overlay" style="align-items:flex-end;">
+    <div id="hist-sheet" class="bottom-sheet">
+        <div class="sheet-header">
+            <div class="sheet-title">📋 歷史檔次</div>
+            <div class="close-btn" onclick="closeHistory()"><i class="fa-solid fa-xmark" style="color:white;font-size:17px;"></i></div>
+        </div>
+        <div class="hist-body" id="hist-sheet-body" style="flex: 1; overflow-y: auto; padding: 15px 20px;"></div>
+    </div>
+</div>
+
+<div id="app-container">
+   <div class="header">
+        <div style="display:flex;align-items:center;">
+            <div class="avatar"><i class="fa-solid fa-face-smile"></i></div>
+            <select id="machine-selector" onchange="switchMachine(this.value)" style="margin-left: 12px; padding: 6px 12px; border-radius: 15px; border: 3px solid #FB923C; background: #FFF; color: #7C2D12; font-weight: 900; font-size: 16px; outline: none; cursor: pointer; box-shadow: 0 3px 0 #FED7AA;">
+                <option value="A">🅰️ A號台</option>
+                <option value="B">🅱️ B號台</option>
+                <option value="ALL">🌐 全部分店總覽</option>
+            </select>
+        </div>
+        <div class="header-warehouse-btn" onclick="openWarehouse()"><i class="fa-solid fa-warehouse"></i></div>
+    </div>
+    <div class="content-area">
+
+        <!-- 首頁 -->
+        <div id="page-home" class="page active">
+            <div class="hero-card">
+               <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="hero-label">🌟 我的實質淨利</div>
+                    <i class="fa-solid fa-chart-line" style="color:#FB923C; font-size:22px; cursor:pointer; padding:5px;" onclick="openChart()"></i>
+                </div>
+                <div class="hero-amount" id="dash-profit">0<span style="font-size:24px;">元</span></div>
+                
+                <div id="all-machine-comparison" style="display:none; margin-top:15px; padding-top:15px; border-top:3px dashed #FED7AA;">
+                    <div style="font-size:13px; font-weight:900; color:#A8A29E; margin-bottom:12px; text-align:center;">📊 各機台與合併數據比較</div>
+                    <div style="display:grid; grid-template-columns: 65px 1fr 1fr 1fr; gap: 6px; text-align: right; font-size: 14px; align-items: center;">
+                        <div style="text-align:left; color:#A8A29E; font-weight:900; font-size:11px;">項目</div>
+                        <div style="color:#7C2D12; font-weight:900; background:#FFEDD5; padding:6px 2px; border-radius:8px; text-align:center;">🅰️ A號台</div>
+                        <div style="color:#7C2D12; font-weight:900; background:#FFEDD5; padding:6px 2px; border-radius:8px; text-align:center;">🅱️ B號台</div>
+                        <div style="color:#FFF; font-weight:900; background:#FB923C; padding:6px 2px; border-radius:8px; text-align:center;">💰 總計</div>
+                        
+                        <div style="text-align:left; color:#A8A29E; font-weight:900; font-size:11px;">實質淨利</div>
+                        <div id="comp-net-a" style="font-weight:900;">$0</div>
+                        <div id="comp-net-b" style="font-weight:900;">$0</div>
+                        <div id="comp-net-total" style="font-weight:900; font-size:15px;">$0</div>
+
+                        <div style="text-align:left; color:#A8A29E; font-weight:900; font-size:11px;">總收幣</div>
+                        <div id="comp-inc-a" style="font-weight:900; color:#10B981;">$0</div>
+                        <div id="comp-inc-b" style="font-weight:900; color:#10B981;">$0</div>
+                        <div id="comp-inc-total" style="font-weight:900; color:#10B981;">$0</div>
+
+                        <div style="text-align:left; color:#A8A29E; font-weight:900; font-size:11px;">倉庫價值</div>
+                        <div id="comp-inv-a" style="font-weight:900; color:#3B82F6;">$0</div>
+                        <div id="comp-inv-b" style="font-weight:900; color:#3B82F6;">$0</div>
+                        <div id="comp-inv-total" style="font-weight:900; color:#3B82F6;">$0</div>
+
+                        <div style="text-align:left; color:#A8A29E; font-weight:900; font-size:11px;">成本已扣</div>
+                        <div id="comp-cost-a" style="font-weight:900; color:#EF4444;">$0</div>
+                        <div id="comp-cost-b" style="font-weight:900; color:#EF4444;">$0</div>
+                        <div id="comp-cost-total" style="font-weight:900; color:#EF4444;">$0</div>
+
+                        <div style="text-align:left; color:#A8A29E; font-weight:900; font-size:11px;">雜項支出</div>
+                        <div id="comp-oper-a" style="font-weight:900; color:#EF4444;">$0</div>
+                        <div id="comp-oper-b" style="font-weight:900; color:#EF4444;">$0</div>
+                        <div id="comp-oper-total" style="font-weight:900; color:#EF4444;">$0</div>
+                    </div>
+                </div>
+                
+                <div class="hero-stats-grid" id="single-machine-stats">
+                    <div class="h-stat-item"><div class="label">總收幣</div><div class="val text-green" id="dash-income">0</div></div>
+                    <div class="h-stat-item"><div class="label">倉庫價值</div><div class="val text-blue" id="dash-inventory-val">0</div></div>
+                    <div class="h-stat-item"><div class="label">成本已扣</div><div class="val text-red" id="dash-used-prize">0</div></div>
+                    <div class="h-stat-item"><div class="label">雜項支出</div><div class="val text-red" id="dash-oper-exp">0</div></div>
+                </div>
+            </div> 
+
+            <div class="section-header">
+                <span>🗓 歷史紀錄</span>
+                <div class="history-nav">
+                    <div class="history-btn" onclick="changeViewDate(-1)"><i class="fa-solid fa-chevron-left"></i></div>
+                    <input type="date" id="history-date-picker" style="border:none;background:transparent;font-weight:900;color:#7C2D12;width:125px;font-size:15px;" onchange="setViewDate(this.value)">
+                    <div class="history-btn" onclick="changeViewDate(1)"><i class="fa-solid fa-chevron-right"></i></div>
+                </div>
+            </div>
+            <div id="recent-list" style="padding:0 20px;min-height:200px;"></div>
+        </div>
+
+        <!-- 巡台 -->
+        <div id="page-daily" class="page">
+            <div class="section-header">📊 本檔進行中</div>
+            <div class="status-grid">
+                <div class="status-card status-full" style="border-left:6px solid #F97316;">
+                    <div style="text-align:left;">
+                        <div class="label">現在大獎是...</div>
+                        <div class="count" id="board-prize" style="color:#F97316;font-size:20px;word-break:break-all;">未設定</div>
+                    </div>
+                </div>
+                <div class="status-card"><div class="label">目前收幣</div><div class="count" id="board-income">$0</div></div>
+                <div class="status-card"><div class="label">累計洞數</div><div class="count" id="board-holes">0</div></div>
+                <div class="status-card"><div class="label">經營天數</div><div class="count" id="board-days">0天</div></div>
+                <div class="status-card"><div class="label">平均一洞</div><div class="count" id="board-avg">$0</div></div>
+            </div>
+            <div class="hist-open-btn" style="margin: 0 20px 8px; background: white; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border: 3px solid #FFF7ED; cursor: pointer; box-shadow: 0 3px 0 #FEF3C7;" onclick="openHistory()">
+                <div style="font-size:16px;font-weight:900;color:#7C2D12;">📋 歷史檔次</div>
+                <i class="fa-solid fa-chevron-right" style="color:#FB923C;"></i>
+            </div>
+            <div class="section-header">✍️ 巡台紀錄</div>
+            <div class="form-list">
+                <div class="form-row"><div class="row-content"><label>日期</label><input type="date" id="daily-date"></div></div>
+                <div class="form-row"><div class="row-content"><label>今日收幣 ($)</label><input type="number" id="daily-income" inputmode="numeric" placeholder="0"></div></div>
+                <div class="form-row">
+                    <div class="row-content">
+                        <label>面板總洞數（目前累計）</label>
+                        <input type="number" id="daily-holes" inputmode="numeric" placeholder="0">
+                        <div id="holes-hint" style="font-size:12px;color:#A8A29E;font-weight:800;margin-top:6px;"></div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-submit" onclick="submitDailyUpdate()">填好囉！送出</button>
+        </div>
+
+        <!-- 庫存 -->
+        <div id="page-inventory" class="page">
+            <div class="section-header">🎁 新貨入庫</div>
+            <div class="form-list">
+                <div class="form-row"><div class="row-content"><label>日期</label><input type="date" id="inv-date"></div></div>
+                <div class="form-row"><div class="row-content"><label>名稱</label><input type="text" id="inv-desc" placeholder="例：史迪奇"></div></div>
+                <div class="form-row"><div class="row-content"><label>成本 ($)</label><input type="number" id="inv-amount" inputmode="numeric" placeholder="0"></div></div>
+                <div class="form-row" style="padding:25px;">
+                    <div style="position:relative;min-height:120px;border:3px dashed #FED7AA;border-radius:25px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                        <img id="inv-preview-img" style="display:none;width:100%;max-height:180px;object-fit:contain;border-radius:15px;">
+                        <input type="file" id="inv-photo" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer;" onchange="handleImagePreview(this)">
+                        <div id="upload-placeholder" style="display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none;"><i class="fa-solid fa-camera" style="font-size:34px;color:#FB923C;"></i><p style="font-weight:900;color:#FB923C;margin-top:8px;">拍個照預覽</p></div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-submit" onclick="submitInventory(this)">存入倉庫</button>
+        </div>
+
+        <!-- 賣出庫存 -->
+        <div id="page-sell" class="page">
+            <div class="section-header">🛒 賣出庫存換現金</div>
+            <div class="form-list">
+                <div class="form-row"><div class="row-content"><label>賣出日期</label><input type="date" id="sell-date"></div></div>
+                <div class="form-row"><div class="row-content"><label>賣出總金額 ($)</label><input type="number" id="sell-price" inputmode="numeric" placeholder="0" oninput="calcSellProfit()"></div></div>
+                
+                <div class="form-row"><div class="row-content"><label>備註說明 (選填)</label><input type="text" id="sell-remark" placeholder="例：蝦皮賣出、面交"></div></div>
+                
+                <div class="form-row" style="background:#F3F4F6; padding:15px;">
+                    <div class="row-content" style="text-align:center;">
+                        <div style="font-size:13px;color:#6B7280;font-weight:900;">
+                            勾選總成本：<span id="sell-cost-display" style="color:#EF4444;font-size:16px;">$0</span><br>
+                            <div style="margin-top:6px;font-size:15px;">預計這筆利潤：<span id="sell-profit-display" style="color:#10B981;font-size:22px;">$0</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="section-header" style="color:#3B82F6;font-size:16px;margin-top:10px;">點選要賣出的商品</div>
+            <div id="sell-item-picker" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px 20px;"></div>
+            <button class="btn-submit" style="background:#3B82F6;box-shadow:0 8px 0 #2563EB;" onclick="submitSell(this)">確認賣出並入帳</button>
+        </div>
+
+        <!-- 結算 -->
+        <div id="page-scratch" class="page">
+            <div class="section-header">🏁 結算換檔</div>
+            <div class="form-list">
+                <div class="form-row"><div class="row-content"><label>日期</label><input type="date" id="scr-date"></div></div>
+            </div>
+            <div class="section-header" style="color:#EF4444;font-size:16px;">1. 這檔出的獎</div>
+            <div id="prize-picker-end" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px 20px;"></div>
+            <div class="section-header" style="color:#10B981;font-size:16px;">2. 下一檔獎品</div>
+            <div id="prize-picker-start" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px 20px;"></div>
+            <button class="btn-submit" style="background:#8B5CF6;box-shadow:0 8px 0 #6D28D9;" onclick="submitScratch()">全部結清換檔</button>
+        </div>
+
+        <!-- 支出 -->
+        <div id="page-rent" class="page">
+            <div class="section-header">💸 其他支出</div>
+            <div class="form-list">
+                <div class="form-row"><div class="row-content"><label>日期</label><input type="date" id="rnt-date"></div></div>
+                <div class="form-row"><div class="row-content"><label>金額 ($)</label><input type="number" id="rnt-amount" inputmode="numeric" placeholder="0"></div></div>
+                <div class="form-row"><div class="row-content"><label>說明</label><input type="text" id="rnt-desc" placeholder="例：場租、電費"></div></div>
+            </div>
+            <button class="btn-submit" style="background:#444;box-shadow:0 8px 0 #000;" onclick="submitRent()">紀錄支出</button>
+        </div>
+
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchPage('home',this)"><i class="fa-solid fa-house-crack"></i><span>首頁</span></div>
+        <div class="nav-item" onclick="switchPage('daily',this)"><i class="fa-solid fa-coins"></i><span>巡台</span></div>
+        <div class="nav-item" onclick="switchPage('inventory',this)"><i class="fa-solid fa-box-open"></i><span>入庫</span></div>
+        <div class="nav-item" onclick="switchPage('sell',this)"><i class="fa-solid fa-store"></i><span>賣出</span></div>
+        <div class="nav-item" onclick="switchPage('scratch',this)"><i class="fa-solid fa-flag-checkered"></i><span>換檔</span></div>
+        <div class="nav-item" onclick="switchPage('rent',this)"><i class="fa-solid fa-tools"></i><span>支出</span></div>
+    </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc }
+    from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL }
+    from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyD9oJirgoJCTU7h-ODfSpfwC80E5fqze2A",
+    authDomain: "clawone-6445c.firebaseapp.com",
+    projectId: "clawone-6445c",
+    storageBucket: "clawone-6445c.firebasestorage.app",
+    messagingSenderId: "945236029933",
+    appId: "1:945236029933:web:f93ffb9e6f8b41aebd37e4",
+    measurementId: "G-JEB18KRCXS"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+const storage = getStorage(app);
+
+// ── State ─────────────────────────────────────────────────────────────────
+let viewDate     = new Date().toISOString().split('T')[0];
+let boardStats   = { holes:0, income:0, curPrizeIds:[], startDate:'', startTs:0, lastGlobalHoles:0 };
+let inventory    = [];
+let allSegs      = [];
+let selectedStartIds = [];
+let selectedSellIds  = []; 
+let whTab = 'in';
+
+let currentMachineId = 'A';
+
+window.switchMachine = (machineId) => {
+    currentMachineId = machineId;
+    selectedStartIds = []; 
+    selectedSellIds  = [];
+    loadDashboard();       
+    if (document.getElementById('warehouse-overlay').style.display === 'flex') renderWarehouse();
+    if (document.getElementById('chart-overlay').style.display === 'flex') window.openChart();
+    if (document.getElementById('page-sell').classList.contains('active')) { 
+        document.getElementById('sell-remark').value = ''; 
+        renderSellPicker(); 
+        calcSellProfit(); 
+    }
+};
+
+const today = () => new Date().toISOString().split('T')[0];
+document.getElementById('history-date-picker').value = viewDate;
+['daily-date','inv-date','scr-date','rnt-date','sell-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = today();
+});
+
+// ── 手勢 ──────────────────────────────────────────────────────────────────
+let touchstartX = 0;
+document.getElementById('page-home').addEventListener('touchstart', e => touchstartX = e.changedTouches[0].screenX);
+document.getElementById('page-home').addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].screenX - touchstartX;
+    if (dx < -50) changeViewDate(1);
+    if (dx >  50) changeViewDate(-1);
+});
+
+// ── 圖表邏輯 ──────────────────────────────────────────────────────────────
+let myChart = null;
+let currentChartRange = 'week';
+let chartOffset = 0;
+
+window.openChart = () => {
+    chartOffset = 0;
+    document.getElementById('chart-overlay').style.display = 'flex';
+    renderAnalyticsChart();
+};
+
+window.closeChart = () => {
+    document.getElementById('chart-overlay').style.display = 'none';
+};
+
+window.switchChartTab = (range) => {
+    currentChartRange = range;
+    chartOffset = 0;
+    document.getElementById('chart-tab-week').className = 'wh-tab' + (range === 'week' ? ' active' : '');
+    document.getElementById('chart-tab-month').className = 'wh-tab' + (range === 'month' ? ' active' : '');
+    renderAnalyticsChart();
+};
+
+window.changeChartOffset = (direction) => {
+    if (direction === 1 && chartOffset >= 0) return;
+    chartOffset += direction;
+    renderAnalyticsChart();
+};
+
+async function renderAnalyticsChart() {
+    const snap = await getDocs(query(collection(db, 'records'), orderBy('timestamp', 'asc')));
+    let allRecords = [];
+    snap.forEach(d => allRecords.push(d.data()));
+
+    let records = currentMachineId === 'ALL' 
+        ? allRecords 
+        : allRecords.filter(r => r.machineId === currentMachineId || (!r.machineId && currentMachineId === 'A'));
+
+    const labels = [];
+    const incomeData = [];
+    const holeData = [];
+    const daysToTrace = currentChartRange === 'week' ? 7 : 30;
+    
+    const baseDate = new Date();
+    baseDate.setDate(baseDate.getDate() + (chartOffset * daysToTrace));
+
+    let displayStartDate = '';
+    let displayEndDate = '';
+
+    for (let i = daysToTrace - 1; i >= 0; i--) {
+        const d = new Date(baseDate);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        
+        if (i === daysToTrace - 1) displayStartDate = dateStr.replace(/-/g, '/');
+        if (i === 0) displayEndDate = dateStr.replace(/-/g, '/');
+
+        labels.push(dateStr.split('-').slice(1).join('/')); 
+        
+        const dailyIncome = records.filter(r => r.date === dateStr && r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
+        const dailyHoles = records.filter(r => r.date === dateStr && r.type === 'scratch_normal').reduce((sum, r) => sum + r.holes, 0);
+
+        incomeData.push(dailyIncome);
+        holeData.push(dailyHoles);
+    }
+
+    document.getElementById('chart-date-range').innerText = `${displayStartDate} ～ ${displayEndDate}`;
+    const nextBtn = document.getElementById('chart-btn-next');
+    nextBtn.style.color = chartOffset < 0 ? '#FB923C' : '#D1D5DB';
+
+    const maxInc = Math.max(...incomeData, 100); 
+    const maxHoleValueEquivalent = Math.max(...holeData, 1) * 60; 
+    let rawMax = Math.max(maxInc, maxHoleValueEquivalent) * 1.1;
+    const chartUpperBound = Math.ceil(rawMax / 120) * 120;
+
+    const ctx = document.getElementById('analyticsChart').getContext('2d');
+    if (myChart) myChart.destroy();
+
+    myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '收幣 $',
+                    data: incomeData,
+                    backgroundColor: 'rgba(251, 146, 60, 0.5)',
+                    borderColor: '#FB923C',
+                    borderWidth: 1,
+                    yAxisID: 'y',
+                    order: 2
+                },
+                {
+                    label: '洞數 (1:60基準)',
+                    data: holeData,
+                    type: 'line',
+                    borderColor: '#7C2D12',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#7C2D12',
+                    tension: 0.3,
+                    yAxisID: 'y1',
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, position: 'left', max: chartUpperBound, title: { display: true, text: '金額 ($)' }, ticks: { color: '#FB923C' } },
+                y1: { beginAtZero: true, position: 'right', max: chartUpperBound / 60, grid: { drawOnChartArea: false }, title: { display: true, text: '洞數' }, ticks: { color: '#7C2D12', stepSize: Math.ceil((chartUpperBound / 60) / 5) } }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        footer: (tooltipItems) => {
+                            const inc = tooltipItems[0].datasetIndex === 0 ? tooltipItems[0].raw : tooltipItems[1].raw;
+                            const hol = tooltipItems[0].datasetIndex === 1 ? tooltipItems[0].raw : tooltipItems[1].raw;
+                            const avg = hol > 0 ? Math.round(inc / hol) : 0;
+                            return `均洞: $${avg}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ── 公用 ──────────────────────────────────────────────────────────────────
+window.setViewDate = v => { viewDate = v; loadDashboard(); };
+window.changeViewDate = offset => {
+    const d = new Date(viewDate); d.setDate(d.getDate() + offset);
+    viewDate = d.toISOString().split('T')[0];
+    document.getElementById('history-date-picker').value = viewDate;
+    loadDashboard();
+};
+window.appAlert = msg => new Promise(res => {
+    document.getElementById('modal-msg').innerHTML = msg;
+    document.getElementById('modal-btn-cancel').style.display = 'none';
+    document.getElementById('custom-modal-overlay').style.display = 'flex';
+    document.getElementById('modal-btn-ok').onclick = () => {
+        document.getElementById('custom-modal-overlay').style.display = 'none'; res();
+    };
+});
+window.appConfirm = msg => new Promise(res => {
+    document.getElementById('modal-msg').innerHTML = msg;
+    document.getElementById('modal-btn-cancel').style.display = 'block';
+    document.getElementById('custom-modal-overlay').style.display = 'flex';
+    document.getElementById('modal-btn-ok').onclick    = () => { document.getElementById('custom-modal-overlay').style.display='none'; res(true); };
+    document.getElementById('modal-btn-cancel').onclick = () => { document.getElementById('custom-modal-overlay').style.display='none'; res(false); };
+});
+
+// ── 倉庫 ──────────────────────────────────────────────────────────────────
+window.openWarehouse = () => {
+    document.getElementById('warehouse-overlay').style.display = 'flex';
+    renderWarehouse();
+};
+window.closeWarehouse = () => { document.getElementById('warehouse-overlay').style.display = 'none'; };
+window.switchWHTab = tab => {
+    whTab = tab;
+    document.getElementById('wh-tab-in').className  = 'wh-tab' + (tab==='in'  ? ' active':'');
+    document.getElementById('wh-tab-out').className = 'wh-tab' + (tab==='out' ? ' active':'');
+    document.getElementById('wh-grid-in').style.display  = tab==='in'  ? 'grid':'none';
+    document.getElementById('wh-grid-out').style.display = tab==='out' ? 'grid':'none';
+};
+function renderWarehouse() {
+    const inList  = inventory.filter(p => !p.isUsed);
+    const outList = inventory.filter(p =>  p.isUsed);
+    const renderGrid = (list, isUsed) => !list.length
+        ? `<div style="grid-column:span 2;text-align:center;padding:40px;color:#A8A29E;font-weight:900;">${isUsed?'尚無出庫紀錄':'倉庫是空的'}</div>`
+        : list.slice().reverse().map(p => {
+            const badgeText = p.status === 'sold' ? '已售出' : (isUsed ? '已刮出' : '在庫');
+            const badgeClass = p.status === 'sold' ? 'badge-sold' : (isUsed ? 'badge-out' : 'badge-in');
+            return `
+            <div class="inv-item ${isUsed?'used-out':''}">
+                <img src="${p.img||'https://via.placeholder.com/150?text=No+Photo'}" class="inv-item-img">
+                <div class="inv-item-info">
+                    <span class="inv-badge ${badgeClass}">${badgeText}</span>
+                    <div class="inv-name">${p.desc}</div>
+                    <div class="inv-price">$${p.amount}</div>
+                    <div class="inv-date">入庫：${p.date}</div>
+                </div>
+                ${isUsed ? `<div class="restore-btn-mini" onclick="restorePrize('${p.id}')" title="放回在庫"><i class="fa-solid fa-arrow-rotate-left"></i></div>` : ''}
+                <div class="del-btn-mini" onclick="deleteRec('${p.id}')"><i class="fa-solid fa-trash-alt"></i></div>
+            </div>`}).join('');
+    document.getElementById('wh-grid-in').innerHTML  = renderGrid(inList,  false);
+    document.getElementById('wh-grid-out').innerHTML = renderGrid(outList, true);
+}
+
+window.restorePrize = async (id) => {
+    if (await appConfirm('要把這個獎品重新改為「在庫」嗎？<br>(這會讓它回到結算/賣出頁的清單中)')) {
+        await updateDoc(doc(db, 'records', id), { isUsed: false, status: 'in_stock' });
+        await appAlert('已放回大倉庫 ✅');
+        loadDashboard();
+    }
+};
+
+// ── 歷史檔次彈窗 ──────────────────────────────────────────────────────────
+window.openHistory = () => {
+    if (currentMachineId === 'ALL') return appAlert('合併總覽模式無法查看歷史檔次喔！<br>請先在上方切換回單一機台。');
+    document.getElementById('history-overlay').style.display = 'flex';
+    renderHistSheet();
+};
+window.closeHistory = () => { document.getElementById('history-overlay').style.display = 'none'; };
+window.toggleSeg = i => {
+    const b = document.getElementById('sd-' + i);
+    const c = document.getElementById('sc-' + i);
+    const open = b.classList.toggle('open');
+    c.style.transform = open ? 'rotate(180deg)':'';
+};
+function renderHistSheet() {
+    const body = document.getElementById('hist-sheet-body');
+    const past = allSegs.filter(s => !s.isCurrent && (s._stats.inc > 0 || s._stats.holes > 0)).reverse();
+    if (!past.length) {
+        body.innerHTML = `<p style="text-align:center;color:#A8A29E;font-weight:900;padding:40px 0;">還沒有歷史檔次</p>`;
+        return;
+    }
+    body.innerHTML = past.map((seg, i) => {
+        const st = seg._stats;
+        const pc = st.profit >= 0 ? '#10B981':'#EF4444';
+        const no = past.length - i;
+        const pNames = seg.prizeNames.length > 0 ? seg.prizeNames.join('、') : '未記錄獎品';
+        return `
+        <div class="seg-card" style="background: white; border-radius: 22px; border: 3px solid #FFF7ED; margin-bottom: 12px; overflow: hidden;">
+            <div class="seg-hdr" style="padding: 15px 18px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;" onclick="toggleSeg(${i})">
+                <div>
+                    <div style="font-weight:900;font-size:15px;">🏆 第${no}檔</div>
+                    <div style="font-size:12px;color:#A8A29E;font-weight:800;margin-top:2px;">${seg.startDate} ～ ${seg.endDate||'?'}</div>
+                    <div style="font-size:13px;font-weight:800;color:#FB923C;margin-top:3px;">${pNames}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="font-size:22px;font-weight:900;color:${pc};">$${st.profit.toLocaleString()}</div>
+                    <i id="sc-${i}" class="fa-solid fa-chevron-down" style="color:#FB923C;font-size:14px;transition:transform 0.3s;"></i>
+                </div>
+            </div>
+            <div id="sd-${i}" class="seg-detail" style="display: none; padding: 0 18px 15px; border-top: 2px dashed #FED7AA;">
+                <div style="font-size:14px;font-weight:800;color:#7C2D12;padding-top:12px;">
+                    💰 收幣 $${st.inc.toLocaleString()} &minus; 🎁 成本 $${st.cost.toLocaleString()}
+                    = <span style="color:${pc};font-size:18px;font-weight:900;">$${st.profit.toLocaleString()}</span>
+                </div>
+                <div class="seg-stat-row" style="display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 12px; text-align: center;">
+                    <div><div style="font-size:10px;color:#A8A29E;font-weight:800;">天數</div><div style="font-size:16px;font-weight:900;color:#3B82F6;">${st.days}天</div></div>
+                    <div><div style="font-size:10px;color:#A8A29E;font-weight:800;">洞數</div><div style="font-size:16px;font-weight:900;color:#8B5CF6;">${st.holes}洞</div></div>
+                    <div><div style="font-size:10px;color:#A8A29E;font-weight:800;">均洞</div><div style="font-size:16px;font-weight:900;color:#10B981;">$${st.avg}</div></div>
+                    <div><div style="font-size:10px;color:#A8A29E;font-weight:800;">利潤</div><div style="font-size:16px;font-weight:900;color:${pc};">$${st.profit.toLocaleString()}</div></div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── 頁面切換 ──────────────────────────────────────────────────────────────
+window.switchPage = (id, el) => {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    el.classList.add('active');
+    loadDashboard();
+    if (id === 'scratch') { selectedStartIds = []; document.getElementById('scr-date').value = today(); renderPrizePickers(); }
+    if (id === 'daily') updateHolesHint();
+    if (id === 'sell') { 
+        selectedSellIds = []; 
+        document.getElementById('sell-date').value = today();
+        document.getElementById('sell-price').value = '';
+        document.getElementById('sell-remark').value = ''; 
+        renderSellPicker(); 
+        calcSellProfit(); 
+    }
+};
+
+// ── 洞數提示 ──────────────────────────────────────────────────────────────
+function updateHolesHint() {
+    const hint = document.getElementById('holes-hint');
+    if (!hint) return;
+    if (boardStats.lastGlobalHoles > 0) {
+        hint.textContent = `上次記錄：${boardStats.lastGlobalHoles} 洞，請輸入比這個大的數字`;
+    } else {
+        hint.textContent = `本檔剛開始，請輸入面板目前顯示的洞數`;
+    }
+}
+
+// ── Segment 核心邏輯 ──
+function buildSegments(records) {
+    const starts = records.filter(r => r.type === 'scratch_start').sort((a,b) => a.timestamp - b.timestamp);
+    const resets = records.filter(r => r.type === 'scratch_reset').sort((a,b) => a.timestamp - b.timestamp);
+    const segs = [];
+
+    const dataOnly = records.filter(r => r.type === 'income' || r.type === 'scratch_normal' || r.isPrize);
+    const absoluteFirstDate = dataOnly.length > 0 ? dataOnly[0].date : today();
+
+    // 修改：如果是第一檔且完全沒有設定過，回傳空的檔次，讓使用者自己去「換檔」選。
+    if (starts.length === 0) {
+        segs.push({
+            startTs: 0, endTs: Infinity,
+            startDate: absoluteFirstDate,
+            endDate: null,
+            prizeNames: [], // 空的，不再自動抓倉庫
+            prizeIds: [],   // 空的，不再自動抓倉庫
+            isCurrent: true,
+        });
+        return segs;
+    }
+
+    const firstStart = starts[0];
+    const seg0Recs = records.filter(r => r.timestamp < firstStart.timestamp && (r.type==='income' || r.type==='scratch_normal'));
+    const lastSeg0Date = seg0Recs.length > 0 ? seg0Recs[seg0Recs.length-1].date : firstStart.date;
+
+    let rawOldIds = firstStart.oldPrizeIds || [];
+    let nextIds = firstStart.prizeIds || [];
+    let validOldIds = rawOldIds.filter(id => records.some(r => r.id === id) && !nextIds.includes(id));
+
+    let allFutureIds = [];
+    starts.forEach(s => { if (s.prizeIds) allFutureIds.push(...s.prizeIds); });
+
+    let orphanIds = records.filter(r => 
+        r.isPrize && 
+        r.isUsed &&
+        r.status !== 'sold' && 
+        r.timestamp < firstStart.timestamp && 
+        !allFutureIds.includes(r.id)
+    ).map(r => r.id);
+
+    let pIds = Array.from(new Set([...validOldIds, ...orphanIds]));
+
+    let pNames = [];
+    pIds.forEach(id => {
+        let p = records.find(r => r.id === id);
+        if (p) pNames.push(p.desc);
+    });
+
+    segs.push({
+        startTs: 0,
+        endTs: firstStart.timestamp,
+        startDate: absoluteFirstDate,
+        endDate: lastSeg0Date,
+        prizeNames: pNames,
+        prizeIds: pIds,
+        isCurrent: false
+    });
+
+    for (let i = 0; i < starts.length; i++) {
+        const s = starts[i];
+        const nextS = starts[i + 1];
+        const endTs = nextS ? nextS.timestamp : Infinity;
+        const reset = resets.find(r => r.timestamp > s.timestamp && r.timestamp < endTs + 5000);
+
+        const curSegRecs = records.filter(r => r.timestamp >= s.timestamp && r.timestamp < endTs && (r.type==='income' || r.type==='scratch_normal'));
+        const autoEndDate = curSegRecs.length > 0 ? curSegRecs[curSegRecs.length-1].date : (reset ? reset.date : null);
+
+        segs.push({
+            startTs: s.timestamp,
+            endTs: endTs,
+            startDate: s.date,
+            endDate: autoEndDate,
+            prizeNames: s.prizeNames || [],
+            prizeIds: s.prizeIds || [],
+            isCurrent: !reset && !nextS
+        });
+    }
+    return segs;
+}
+
+function segStats(seg, records, inv) {
+    let inc = 0, holes = 0;
+    records.forEach(r => {
+        if (r.timestamp >= seg.startTs && r.timestamp < seg.endTs) {
+            if (r.type === 'income') inc += r.amount;
+            if (r.type === 'scratch_normal') holes += r.holes;
+        }
+    });
+    let cost = 0;
+    inv.forEach(p => { if (seg.prizeIds.includes(p.id)) cost += p.amount; });
+
+    const dStart = new Date(seg.startDate.replace(/-/g, '/'));
+    const realEndDateStr = seg.endDate || today();
+    const dEnd = new Date(realEndDateStr.replace(/-/g, '/'));
+    const diffTime = Math.abs(dEnd - dStart);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    return { inc, holes, cost, days: diffDays, profit: inc - cost, avg: holes > 0 ? Math.round(inc/holes) : 0 };
+}
+
+// ── 主 loadDashboard ──────────────────────────────────────────────────────
+async function loadDashboard() {
+    try {
+        const snap = await getDocs(query(collection(db,'records'), orderBy('timestamp','asc')));
+        let allRecords = [];
+        snap.forEach(d => allRecords.push({ id: d.id, ...d.data() }));
+
+        let records = currentMachineId === 'ALL' 
+            ? allRecords 
+            : allRecords.filter(r => r.machineId === currentMachineId || (!r.machineId && currentMachineId === 'A'));
+
+        inventory = records.filter(r => r.isPrize);
+
+        let tInc = 0, tUsedP = 0, tOper = 0, tInvV = 0;
+        let statsA = { inc:0, cost:0, oper:0, inv:0 }, statsB = { inc:0, cost:0, oper:0, inv:0 };
+
+        records.forEach(r => {
+            let m = r.machineId || 'A';
+            if (r.type === 'income') {
+                tInc += r.amount;
+                if(m==='A') statsA.inc += r.amount;
+                if(m==='B') statsB.inc += r.amount;
+            }
+            if (r.type === 'rent') {
+                tOper += r.amount;
+                if(m==='A') statsA.oper += r.amount;
+                if(m==='B') statsB.oper += r.amount;
+            }
+            if (r.isPrize) {
+                if (r.isUsed) {
+                    tUsedP += r.amount;
+                    if(m==='A') statsA.cost += r.amount;
+                    if(m==='B') statsB.cost += r.amount;
+                } else {
+                    tInvV += r.amount;
+                    if(m==='A') statsA.inv += r.amount;
+                    if(m==='B') statsB.inv += r.amount;
+                }
+            }
+        });
+
+          if (currentMachineId === 'ALL') {
+            document.getElementById('all-machine-comparison').style.display = 'block';
+            document.getElementById('single-machine-stats').style.display = 'none';
+
+            let netA = statsA.inc - statsA.cost - statsA.oper;
+            let netB = statsB.inc - statsB.cost - statsB.oper;
+            let netTotal = tInc - tUsedP - tOper; 
+            
+            document.getElementById('comp-net-a').innerHTML = `<span style="color:${netA>=0?'#10B981':'#EF4444'}">$${netA.toLocaleString()}</span>`;
+            document.getElementById('comp-net-b').innerHTML = `<span style="color:${netB>=0?'#10B981':'#EF4444'}">$${netB.toLocaleString()}</span>`;
+            document.getElementById('comp-net-total').innerHTML = `<span style="color:${netTotal>=0?'#10B981':'#EF4444'}">$${netTotal.toLocaleString()}</span>`;
+            document.getElementById('comp-inc-a').innerText = `$${statsA.inc.toLocaleString()}`;
+            document.getElementById('comp-inc-b').innerText = `$${statsB.inc.toLocaleString()}`;
+            document.getElementById('comp-inc-total').innerText = `$${tInc.toLocaleString()}`;
+            document.getElementById('comp-inv-a').innerText = `$${statsA.inv.toLocaleString()}`;
+            document.getElementById('comp-inv-b').innerText = `$${statsB.inv.toLocaleString()}`;
+            document.getElementById('comp-inv-total').innerText = `$${tInvV.toLocaleString()}`;
+            document.getElementById('comp-cost-a').innerText = `$${statsA.cost.toLocaleString()}`;
+            document.getElementById('comp-cost-b').innerText = `$${statsB.cost.toLocaleString()}`;
+            document.getElementById('comp-cost-total').innerText = `$${tUsedP.toLocaleString()}`;
+            document.getElementById('comp-oper-a').innerText = `$${statsA.oper.toLocaleString()}`;
+            document.getElementById('comp-oper-b').innerText = `$${statsB.oper.toLocaleString()}`;
+            document.getElementById('comp-oper-total').innerText = `$${tOper.toLocaleString()}`;
+            
+            document.getElementById('board-prize').innerText  = '合併檢視中';
+            document.getElementById('board-income').innerText = '-';
+            document.getElementById('board-holes').innerText  = '-';
+            document.getElementById('board-days').innerText   = '-';
+            document.getElementById('board-avg').innerText    = '-';
+        } else {
+            document.getElementById('all-machine-comparison').style.display = 'none';
+            document.getElementById('single-machine-stats').style.display = 'grid';
+
+            const segments = buildSegments(records);
+            allSegs = segments.map(seg => ({ ...seg, _stats: segStats(seg, records, inventory) }));
+            const curSeg = allSegs.find(s => s.isCurrent) || allSegs[allSegs.length-1];
+
+            if (curSeg) {
+                const st = curSeg._stats;
+                document.getElementById('board-prize').innerText  = curSeg.prizeNames.join('、') || '尚未設定';
+                document.getElementById('board-income').innerText = `$${st.inc.toLocaleString()}`;
+                document.getElementById('board-holes').innerText  = st.holes;
+                document.getElementById('board-days').innerText   = `${st.days}天`;
+                document.getElementById('board-avg').innerText    = `$${st.avg}`;
+                boardStats = { holes: st.holes, income: st.inc, curPrizeIds: curSeg.prizeIds, startDate: curSeg.startDate, startTs: curSeg.startTs, lastGlobalHoles: st.holes };
+            }
+        }
+
+        const net = tInc - tOper - tUsedP;
+        document.getElementById('dash-profit').innerHTML        = `${net.toLocaleString()}<span style="font-size:24px;">元</span>`;
+        document.getElementById('dash-income').innerText        = tInc.toLocaleString();
+        document.getElementById('dash-used-prize').innerText    = tUsedP.toLocaleString();
+        document.getElementById('dash-oper-exp').innerText      = tOper.toLocaleString();
+        document.getElementById('dash-inventory-val').innerText = tInvV.toLocaleString();
+
+        const list = document.getElementById('recent-list');
+        const typeMap = {
+            income:         { color:'text-green',  icon:'💰', val: d => `+$${d.amount.toLocaleString()}` },
+            rent:           { color:'text-red',    icon:'💸', val: d => `-$${d.amount.toLocaleString()}` },
+            cost:           { color:'text-red',    icon:'📦', val: d => `-$${d.amount.toLocaleString()}` },
+            scratch_normal: { color:'text-blue',   icon:'🎯', val: d => `+${d.holes}洞` },
+            scratch_start:  { color:'text-orange', icon:'🏁', val: d => '換檔開始' },
+            scratch_reset:  { color:'text-purple', icon:'🏆', val: d => '結清紀錄' },
+        };
+
+        const dailyRecs = records.filter(r => r.date === viewDate).sort((a,b) => b.timestamp - a.timestamp);
+        list.innerHTML = dailyRecs.map(data => {
+            if (data.isPrize && !data.isUsed) return '';
+            const t = typeMap[data.type]; if (!t) return '';
+            const mBadge = currentMachineId === 'ALL' ? (data.machineId === 'B' ? '[🅱️ B號台] ' : '[🅰️ A號台] ') : '';
+            return `<div class="record-item">
+                <div style="font-size:22px;margin-right:12px;">${t.icon}</div>
+                <div class="record-info">
+                    <div class="record-name">${mBadge}${data.desc}</div>
+                    <div class="record-date">${data.date}</div>
+                </div>
+                <div class="record-val ${t.color}">${t.val(data)}</div>
+                <i class="fa-solid fa-trash-alt" style="color:#FCA5A5;margin-left:15px;cursor:pointer;flex-shrink:0;" onclick="deleteRec('${data.id}')"></i>
+            </div>`;
+        }).join('') || `<p style="text-align:center;padding:50px;color:#A8A29E;">${viewDate} 沒有紀錄</p>`;
+
+        updateHolesHint();
+        if (document.getElementById('warehouse-overlay').style.display === 'flex') renderWarehouse();
+    } catch(e) { console.error(e); }
+}
+
+// ── 功能函數 ──
+window.handleImagePreview = input => {
+    const file = input.files[0]; 
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('inv-preview-img').src = e.target.result;
+        document.getElementById('inv-preview-img').style.display = 'block';
+        document.getElementById('upload-placeholder').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+};
+
+window.submitInventory = async (btn) => {
+    if(currentMachineId === 'ALL') return appAlert('合併模式下無法新增庫存！<br>請先在上方切換到特定機台。');
+    
+    const desc   = document.getElementById('inv-desc').value.trim();
+    const amount = Number(document.getElementById('inv-amount').value);
+    const date   = document.getElementById('inv-date').value;
+    const file   = document.getElementById('inv-photo').files[0];
+    
+    if (!desc || !amount || !date) return appAlert('請填寫日期、名稱與成本');
+
+    const originalText = btn.innerText;
+    btn.innerText = '⏳ 上傳中...';
+    btn.disabled = true; 
+    btn.style.opacity = '0.6';
+
+    try {
+        let imgUrl = '';
+        if (file) {
+            const sRef = ref(storage, `inv/${Date.now()}`);
+            await uploadBytes(sRef, file); 
+            imgUrl = await getDownloadURL(sRef);
+        }
+        await addDoc(collection(db,'records'), { machineId: currentMachineId, type:'cost', isPrize:true, isUsed:false, status:'in_stock', date, amount, desc, img:imgUrl, timestamp:Date.now() });
+        
+        ['inv-desc','inv-amount'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('inv-photo').value = '';
+        document.getElementById('inv-preview-img').style.display = 'none';
+        document.getElementById('upload-placeholder').style.display = 'flex';
+        
+        await appAlert('已入庫 ✅'); 
+        loadDashboard();
+        switchPage('home', document.querySelectorAll('.nav-item')[0]);
+    } catch(e) { 
+        appAlert('入庫失敗，請檢查網路連線'); 
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+        btn.style.opacity = '1';
+    }
+};
+
+window.submitDailyUpdate = async () => {
+    if(currentMachineId === 'ALL') return appAlert('合併模式下無法巡台！<br>請先在上方切換到特定機台。');
+    const date = document.getElementById('daily-date').value;
+    const incAmt = Number(document.getElementById('daily-income').value);
+    const totalHoles = Number(document.getElementById('daily-holes').value);
+    if (!date) return appAlert('請選擇日期');
+    const now = Date.now();
+    if (incAmt > 0) await addDoc(collection(db,'records'), { machineId: currentMachineId, type:'income', date, amount:incAmt, desc:'每日收幣', timestamp:now });
+    if (totalHoles > 0) {
+        const increment = totalHoles - boardStats.lastGlobalHoles;
+        if (increment <= 0) return appAlert(`輸入洞數需大於目前累積的 ${boardStats.lastGlobalHoles} 洞`);
+        await addDoc(collection(db,'records'), { machineId: currentMachineId, type:'scratch_normal', date, holes: increment, amount: 0, desc: `巡台累計 ${totalHoles} 洞`, timestamp: now + 1 });
+    }
+    document.getElementById('daily-income').value = '';
+    document.getElementById('daily-holes').value  = '';
+    await appAlert('紀錄完成 ✅'); loadDashboard();
+    switchPage('home', document.querySelectorAll('.nav-item')[0]);
+};
+
+window.submitRent = async () => {
+    if(currentMachineId === 'ALL') return appAlert('合併模式下無法記帳！<br>請先在上方切換到特定機台。');
+    const date = document.getElementById('rnt-date').value;
+    const amount = Number(document.getElementById('rnt-amount').value);
+    const desc = document.getElementById('rnt-desc').value.trim() || '支出';
+    if (!date || amount <= 0) return appAlert('請填寫日期與金額');
+    await addDoc(collection(db,'records'), { machineId: currentMachineId, type:'rent', date, amount, desc, timestamp:Date.now() });
+    document.getElementById('rnt-amount').value = ''; document.getElementById('rnt-desc').value = '';
+    await appAlert('已紀錄支出 ✅'); loadDashboard();
+    switchPage('home', document.querySelectorAll('.nav-item')[0]);
+};
+
+window.submitScratch = async () => {
+    if(currentMachineId === 'ALL') return appAlert('合併模式下無法換檔！<br>請先在上方切換到特定機台。');
+    const date = document.getElementById('scr-date').value;
+    if (!date) return appAlert('請選擇日期');
+    if (!selectedStartIds.length) return appAlert('請選下一檔大獎');
+    
+    // 如果是第一檔空白狀態，詢問文字改變
+    const isFirstTime = boardStats.curPrizeIds.length === 0;
+    const confirmMsg = isFirstTime ? '確認設定這些商品為第一檔大獎正式開始嗎？' : '確認結清本檔並換檔？';
+    if (!(await appConfirm(confirmMsg))) return;
+
+    let prizeCost = 0;
+    inventory.forEach(p => { if (boardStats.curPrizeIds.includes(p.id)) prizeCost += p.amount; });
+    const profit = boardStats.income - prizeCost;
+    
+    const now = Date.now();
+    for (const id of boardStats.curPrizeIds) await updateDoc(doc(db,'records',id), { isUsed: true, status: 'scratched' });
+    
+    const newNames = inventory.filter(p => selectedStartIds.includes(p.id)).map(p => p.desc);
+    const oldNames = inventory.filter(p => boardStats.curPrizeIds.includes(p.id)).map(p => p.desc);
+    
+    await addDoc(collection(db,'records'), { machineId: currentMachineId, type:'scratch_start', date, amount:0, desc:`🏁 新檔：${newNames.join('、')}`, prizeIds: selectedStartIds, prizeNames: newNames, oldPrizeIds: boardStats.curPrizeIds, oldPrizeNames: oldNames, timestamp: now });
+    
+    // 如果不是全新的第一檔，才記錄「結清紀錄」
+    if (!isFirstTime || boardStats.income > 0) {
+        await addDoc(collection(db,'records'), { machineId: currentMachineId, type:'scratch_reset', date, amount:0, desc:`🏆 結清紀錄`, income: boardStats.income, cost: prizeCost, profit, timestamp: now + 100 });
+    }
+
+    selectedStartIds = []; 
+    await appAlert('設定成功 🎉'); 
+    loadDashboard();
+    switchPage('home', document.querySelectorAll('.nav-item')[0]);
+};
+
+// ── 賣出功能 ──
+window.calcSellProfit = () => {
+    let cost = 0;
+    inventory.forEach(p => { if (selectedSellIds.includes(p.id)) cost += p.amount; });
+    let price = Number(document.getElementById('sell-price').value) || 0;
+    let profit = price - cost;
+    
+    document.getElementById('sell-cost-display').innerText = `$${cost.toLocaleString()}`;
+    document.getElementById('sell-profit-display').innerText = `$${profit.toLocaleString()}`;
+    document.getElementById('sell-profit-display').style.color = profit >= 0 ? '#10B981' : '#EF4444';
+};
+
+function renderSellPicker() {
+    const el = document.getElementById('sell-item-picker');
+    el.innerHTML = '';
+    inventory.forEach(p => {
+        if (!p.isUsed) {
+            const sel = selectedSellIds.includes(p.id);
+            el.appendChild(chip(p, () => {
+                const idx = selectedSellIds.indexOf(p.id);
+                if (idx > -1) selectedSellIds.splice(idx, 1); else selectedSellIds.push(p.id);
+                renderSellPicker();
+                calcSellProfit();
+            }, sel));
+        }
+    });
+    if(el.innerHTML === '') el.innerHTML = '<div style="grid-column:span 3;text-align:center;color:#A8A29E;font-size:14px;padding:20px;">倉庫內目前沒有可以賣出的商品</div>';
+}
+
+window.submitSell = async (btn) => {
+    if(currentMachineId === 'ALL') return appAlert('合併模式下無法賣出！<br>請先在上方切換到特定機台。');
+    const date = document.getElementById('sell-date').value;
+    const price = Number(document.getElementById('sell-price').value);
+    const remark = document.getElementById('sell-remark').value.trim(); 
+    
+    if (!date) return appAlert('請選擇日期');
+    if (!selectedSellIds.length) return appAlert('請先點選下方要賣出的商品');
+    if (document.getElementById('sell-price').value === '') return appAlert('請輸入賣出總金額 (免費送人請填 0)');
+
+    if (!(await appConfirm(`確定要將勾選的商品賣出，並記錄進帳 $${price} 嗎？`))) return;
+
+    const originalText = btn.innerText;
+    btn.innerText = '處理中...';
+    btn.disabled = true;
+
+    try {
+        const now = Date.now();
+        let names = [];
+
+        // 1. 將選中的商品標記為已售出 (移出倉庫)
+        for (const id of selectedSellIds) {
+            const p = inventory.find(i => i.id === id);
+            if(p) {
+                names.push(p.desc);
+                await updateDoc(doc(db, 'records', id), { isUsed: true, status: 'sold' });
+            }
+        }
+
+        // 組合顯示的文字
+        let descText = `🛒 賣出: ${names.join('、')}`;
+        if (remark) {
+            descText += ` (${remark})`; // 若有備註則加上括號顯示
+        }
+
+        // 2. 新增一筆收幣紀錄代表賣出的進帳
+        if (price >= 0) {
+            await addDoc(collection(db, 'records'), { 
+                machineId: currentMachineId, 
+                type: 'income', 
+                date, 
+                amount: price, 
+                desc: descText, 
+                timestamp: now 
+            });
+        }
+
+        await appAlert('賣出成功！💰<br>已為您入帳。');
+        loadDashboard();
+        switchPage('home', document.querySelectorAll('.nav-item')[0]);
+    } catch(e) {
+        appAlert('發生錯誤，請檢查網路。');
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+};
+
+window.deleteRec = async id => {
+    if (await appConfirm('確定要刪除嗎？刪除「結清紀錄」或「換檔開始」會重新計算檔次。')) {
+        await deleteDoc(doc(db,'records',id));
+        await loadDashboard();
+        if (document.getElementById('warehouse-overlay').style.display === 'flex') renderWarehouse();
+    }
+};
+
+function renderPrizePickers() {
+    const endEl = document.getElementById('prize-picker-end');
+    const startEl = document.getElementById('prize-picker-start');
+    endEl.innerHTML = ''; startEl.innerHTML = '';
+    inventory.forEach(p => {
+        if (boardStats.curPrizeIds.includes(p.id)) endEl.appendChild(chip(p, null, true));
+        else if (!p.isUsed) {
+            const sel = selectedStartIds.includes(p.id);
+            startEl.appendChild(chip(p, () => {
+                const idx = selectedStartIds.indexOf(p.id);
+                if (idx > -1) selectedStartIds.splice(idx, 1); else selectedStartIds.push(p.id);
+                renderPrizePickers();
+            }, sel));
+        }
+    });
+}
+function chip(p, onClick, selected) {
+    const div = document.createElement('div');
+    div.style.cssText = `background:white;border-radius:18px;padding:8px;text-align:center;border:3px solid ${selected?'#FB923C':'#F3F4F6'};cursor:${onClick?'pointer':'default'};`;
+    div.innerHTML = `${p.img?`<img src="${p.img}" style="width:100%;height:55px;object-fit:cover;border-radius:12px;">`:''}<div style="font-size:11px;font-weight:900;margin-top:4px;">${p.desc}</div><b style="color:#EF4444;font-size:11px;">$${p.amount}</b>`;
+    if (onClick) div.onclick = onClick;
+    return div;
+}
+
+loadDashboard();
+</script>
+</body>
+</html>
