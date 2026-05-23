@@ -178,6 +178,17 @@
     </div>
 </div>
 
+<!-- ⭐ 新增的明細彈窗 (賣出利潤 / 雜項支出) -->
+<div id="detail-overlay" class="modal-overlay" style="align-items:flex-end;">
+    <div id="detail-sheet" class="bottom-sheet" style="height: 75vh;">
+        <div class="sheet-header">
+            <div class="sheet-title" id="detail-title">📋 明細</div>
+            <div class="close-btn" onclick="closeDetail()"><i class="fa-solid fa-xmark" style="color:white;font-size:17px;"></i></div>
+        </div>
+        <div id="detail-list" style="flex: 1; overflow-y: auto; padding: 15px 20px; background: #FFF9F0;"></div>
+    </div>
+</div>
+
 <div id="app-container">
    <div class="header">
         <div style="display:flex;align-items:center;">
@@ -243,9 +254,21 @@
 
                 <div class="hero-stats-grid" id="single-machine-stats">
                     <div class="h-stat-item"><div class="label">機台收幣</div><div class="val text-green" id="dash-income">0</div></div>
-                    <div class="h-stat-item"><div class="label">賣出利潤</div><div class="val" id="dash-sell-profit">0</div></div>
+                    
+                    <!-- 修改這行：賣出利潤 (加上點擊) -->
+                    <div class="h-stat-item" onclick="openDetail('sell')" style="cursor:pointer; position:relative; background:#FFF7ED; padding:8px; border-radius:12px; margin:-8px;">
+                        <div class="label">賣出利潤 <i class="fa-solid fa-magnifying-glass" style="color:#FB923C; margin-left:4px;"></i></div>
+                        <div class="val" id="dash-sell-profit">0</div>
+                    </div>
+
                     <div class="h-stat-item"><div class="label">出獎成本</div><div class="val text-red" id="dash-machine-cost">0</div></div>
-                    <div class="h-stat-item"><div class="label">雜項支出</div><div class="val text-red" id="dash-oper-exp">0</div></div>
+                    
+                    <!-- 修改這行：雜項支出 (加上點擊) -->
+                    <div class="h-stat-item" onclick="openDetail('oper')" style="cursor:pointer; position:relative; background:#FEF2F2; padding:8px; border-radius:12px; margin:-8px;">
+                        <div class="label">雜項支出 <i class="fa-solid fa-magnifying-glass" style="color:#EF4444; margin-left:4px;"></i></div>
+                        <div class="val text-red" id="dash-oper-exp">0</div>
+                    </div>
+
                     <div class="h-stat-item" style="grid-column: span 2; display: flex; justify-content: space-between; align-items: center; padding-right: 15px;"><div class="label" style="margin:0;">目前倉庫總價值</div><div class="val text-blue" id="dash-inventory-val">0</div></div>
                 </div>
             </div>
@@ -400,7 +423,7 @@ let allSegs      = [];
 let selectedStartIds = [];
 let selectedSellIds  = []; 
 let whTab = 'in';
-
+let currentRecords = []; 
 let currentMachineId = 'A';
 
 window.switchMachine = (machineId) => {
@@ -492,7 +515,6 @@ async function renderAnalyticsChart() {
 
         labels.push(dateStr.split('-').slice(1).join('/')); 
 
-        // 過濾掉賣出的收入
         const dailyIncome = records.filter(r => {
             const isSell = (r.type === 'sell_income') || (r.type === 'income' && r.desc && r.desc.includes('賣出'));
             return r.date === dateStr && r.type === 'income' && !isSell;
@@ -646,11 +668,11 @@ window.toggleSeg = i => {
     const b = document.getElementById('sd-' + i);
     const c = document.getElementById('sc-' + i);
     if (b.style.display === 'none') {
-        b.style.display = 'block'; // 展開顯示
-        c.style.transform = 'rotate(180deg)'; // 箭頭轉向
+        b.style.display = 'block'; 
+        c.style.transform = 'rotate(180deg)'; 
     } else {
-        b.style.display = 'none'; // 收起隱藏
-        c.style.transform = 'rotate(0deg)'; // 箭頭轉回
+        b.style.display = 'none'; 
+        c.style.transform = 'rotate(0deg)'; 
     }
 };
 
@@ -873,7 +895,6 @@ function segStats(seg, records, inv) {
 }
 
 // ── 主 loadDashboard ──────────────────────────────────────────────────────
-// ── 主 loadDashboard ──────────────────────────────────────────────────────
 async function loadDashboard() {
     try {
         const snap = await getDocs(query(collection(db,'records'), orderBy('timestamp','asc')));
@@ -883,7 +904,8 @@ async function loadDashboard() {
         let records = currentMachineId === 'ALL' 
             ? allRecords 
             : allRecords.filter(r => r.machineId === currentMachineId || (!r.machineId && currentMachineId === 'A'));
-
+        
+        currentRecords = records; // ⭐ 新增這行：把資料存起來給明細用
         inventory = records.filter(r => r.isPrize);
 
         let tInc = 0, tOper = 0, tInvV = 0, tSellInc = 0, tMachineCost = 0, tSellCost = 0;
@@ -1209,25 +1231,29 @@ window.submitSell = async (btn) => {
         const now = Date.now();
         let names = [];
 
-        // 1. 標記已售出
+        // 1. 標記已售出並計算總成本
+        let cost = 0;
         for (const id of selectedSellIds) {
             const p = inventory.find(i => i.id === id);
             if(p) {
                 names.push(p.desc);
+                cost += p.amount; // 累加這批賣出的總成本
                 await updateDoc(doc(db, 'records', id), { isUsed: true, status: 'sold' });
             }
         }
+        let profit = price - cost; // 算出獲利
 
         let descText = `🛒 賣出: ${names.join('、')}`;
         if (remark) descText += ` (${remark})`;
 
-        // 2. 存為專屬的 sell_income，不再混入機台收幣
         if (price >= 0) {
             await addDoc(collection(db, 'records'), { 
                 machineId: currentMachineId, 
                 type: 'sell_income', 
                 date, 
                 amount: price, 
+                cost: cost,     // ⭐ 存入成本
+                profit: profit, // ⭐ 存入獲利
                 desc: descText, 
                 timestamp: now 
             });
@@ -1276,8 +1302,99 @@ function chip(p, onClick, selected) {
     return div;
 }
 
+// ── 明細彈窗功能 ──
+window.openDetail = (type) => {
+    const listEl = document.getElementById('detail-list');
+    const titleEl = document.getElementById('detail-title');
+    listEl.innerHTML = '';
+    document.getElementById('detail-overlay').style.display = 'flex';
+
+    if (type === 'sell') {
+        titleEl.innerHTML = '🛒 賣出利潤明細';
+        // 找出所有賣出紀錄
+        const sells = currentRecords.filter(r => r.type === 'sell_income' || (r.type === 'income' && r.desc && r.desc.includes('賣出'))).sort((a,b) => b.timestamp - a.timestamp);
+        
+        if (!sells.length) {
+            listEl.innerHTML = '<div style="text-align:center; padding: 40px; color:#A8A29E; font-weight:900;">尚無賣出紀錄</div>';
+            return;
+        }
+
+        // 用來配對舊紀錄成本的暫存池
+        let tempSoldPool = inventory.filter(i => i.status === 'sold');
+
+        listEl.innerHTML = sells.map(s => {
+            let cost = s.cost;
+            let profit = s.profit;
+            
+            // ⭐ 針對舊資料沒有存到成本的狀況，系統自動尋找名稱回推算成本
+            if (cost === undefined) {
+                let namesStr = s.desc.replace('🛒 賣出: ', '').split(' (')[0];
+                let namesArr = namesStr.split('、');
+                cost = 0;
+                namesArr.forEach(n => {
+                    let idx = tempSoldPool.findIndex(i => i.desc === n.trim());
+                    if(idx !== -1) {
+                        cost += tempSoldPool[idx].amount;
+                        tempSoldPool.splice(idx, 1); // 扣掉避免重複算
+                    }
+                });
+                profit = s.amount - cost;
+            }
+
+            const profitColor = profit >= 0 ? '#10B981' : '#EF4444';
+            const profitSign  = profit > 0 ? '+' : '';
+
+            return `
+            <div style="background:white; border-radius:18px; padding:15px; margin-bottom:12px; border:3px solid #FFEDD5; box-shadow: 0 4px 0 #FFEDD5;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
+                    <div style="font-weight:900; color:#7C2D12; font-size:15px; flex:1;">${s.desc.replace('🛒 賣出: ', '')}</div>
+                    <div style="font-size:11px; color:#A8A29E; font-weight:900; background:#F3F4F6; padding:4px 8px; border-radius:10px;">${s.date}</div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#FFF7ED; padding:10px 12px; border-radius:12px;">
+                    <div style="text-align:center;">
+                        <div style="font-size:11px; color:#A8A29E; font-weight:900;">進 (成本)</div>
+                        <div style="font-size:15px; font-weight:900; color:#5C4033;">$${cost}</div>
+                    </div>
+                    <i class="fa-solid fa-arrow-right" style="color:#D1D5DB; font-size:12px;"></i>
+                    <div style="text-align:center;">
+                        <div style="font-size:11px; color:#A8A29E; font-weight:900;">賣出</div>
+                        <div style="font-size:15px; font-weight:900; color:#3B82F6;">$${s.amount}</div>
+                    </div>
+                    <i class="fa-solid fa-equals" style="color:#D1D5DB; font-size:12px;"></i>
+                    <div style="text-align:center;">
+                        <div style="font-size:11px; color:#A8A29E; font-weight:900;">獲利</div>
+                        <div style="font-size:18px; font-weight:900; color:${profitColor};">${profitSign}$${profit}</div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+    } else if (type === 'oper') {
+        titleEl.innerHTML = '💸 雜項支出明細';
+        const opers = currentRecords.filter(r => r.type === 'rent').sort((a,b) => b.timestamp - a.timestamp);
+        
+        if (!opers.length) {
+            listEl.innerHTML = '<div style="text-align:center; padding: 40px; color:#A8A29E; font-weight:900;">尚無支出紀錄</div>';
+            return;
+        }
+
+        listEl.innerHTML = opers.map(o => `
+            <div style="background:white; border-radius:18px; padding:15px; margin-bottom:12px; border:3px solid #FEE2E2; box-shadow: 0 4px 0 #FEE2E2; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-weight:900; color:#7F1D1D; font-size:16px;">${o.desc}</div>
+                    <div style="font-size:12px; color:#A8A29E; font-weight:800; margin-top:4px;">${o.date}</div>
+                </div>
+                <div style="font-weight:900; color:#EF4444; font-size:20px;">-$${o.amount}</div>
+            </div>
+        `).join('');
+    }
+};
+
+window.closeDetail = () => {
+    document.getElementById('detail-overlay').style.display = 'none';
+};
+
 loadDashboard();
 </script>
 </body>
-</html>
 </html>
