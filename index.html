@@ -77,7 +77,7 @@
         .sheet-header { padding: 20px 25px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px dashed #FED7AA; flex-shrink: 0; }
         .sheet-title { font-size: 22px; font-weight: 900; color: #7C2D12; }
         .close-btn { width: 36px; height: 36px; background: #FB923C; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-
+.badge-onboard { background: #FFEDD5; color: #EA580C; border: 1px solid #FB923C; }
         /* Warehouse */
         #warehouse-overlay { z-index: 20000; }
         #wh-sheet { height: 90vh; }
@@ -102,7 +102,7 @@
         .inv-date { font-size: 10px; color: #A8A29E; font-weight: 800; }
         .del-btn-mini { position: absolute; bottom: 7px; right: 7px; color: #FCA5A5; font-size: 13px; background: rgba(255,255,255,0.9); width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; }
         .restore-btn-mini { position: absolute; bottom: 7px; right: 38px; color: #10B981; font-size: 13px; background: rgba(255,255,255,0.9); width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; }
-
+.edit-btn-mini { position: absolute; bottom: 7px; color: #3B82F6; font-size: 13px; background: rgba(255,255,255,0.9); width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; }
         /* Colors */
         .text-green  { color: #10B981; }
         .text-red    { color: #EF4444; }
@@ -124,7 +124,24 @@
         </div>
     </div>
 </div>
-
+<!-- 編輯商品/支出彈窗 -->
+<div id="edit-item-overlay" class="modal-overlay" style="align-items:center; z-index: 35000;">
+    <div class="modal-box">
+        <div style="font-size:20px; font-weight:900; color:#7C2D12; margin-bottom:15px;">✏️ 修改紀錄</div>
+        <div style="text-align: left; margin-bottom: 12px;">
+            <label style="font-size:13px; color:#FB923C; font-weight:900;">名稱 / 說明</label>
+            <input type="text" id="edit-item-desc" style="width:100%; padding:10px; border-radius:12px; border:3px solid #FFEDD5; font-size:16px; font-weight:900; color:#5C4033; outline:none; margin-top:6px; background:white;">
+        </div>
+        <div style="text-align: left; margin-bottom: 20px;">
+            <label style="font-size:13px; color:#FB923C; font-weight:900;">金額 / 成本 ($)</label>
+            <input type="number" id="edit-item-amount" inputmode="numeric" style="width:100%; padding:10px; border-radius:12px; border:3px solid #FFEDD5; font-size:16px; font-weight:900; color:#5C4033; outline:none; margin-top:6px; background:white;">
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-modal-cancel" style="display:block;" onclick="closeEditModal()">取消</button>
+            <button class="btn-modal btn-modal-ok" onclick="submitEditItem()">儲存修改</button>
+        </div>
+    </div>
+</div>
 <!-- 倉庫 -->
 <div id="warehouse-overlay" class="modal-overlay" style="align-items:flex-end;">
     <div id="wh-sheet" class="bottom-sheet">
@@ -425,7 +442,19 @@ let selectedSellIds  = [];
 let whTab = 'in';
 let currentRecords = []; 
 let currentMachineId = 'A';
-
+// ⭐ 新增：將選擇的日期轉換為正確的時間戳記，解決補登排序錯亂問題
+const getTimestampByDate = (dateStr) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateStr === todayStr) {
+        return Date.now(); // 如果是今天，直接用當下真實時間
+    } else {
+        // 如果是補登過去的日期，強制設定為該日期的 23:59:59
+        // 這樣它就會排在那一天的最後，並且早於隔天的紀錄
+        const d = new Date(dateStr.replace(/-/g, '/')); 
+        d.setHours(23, 59, 59, Math.floor(Math.random() * 500));
+        return d.getTime();
+    }
+};
 window.switchMachine = (machineId) => {
     currentMachineId = machineId;
     selectedStartIds = []; 
@@ -625,16 +654,96 @@ window.switchWHTab = tab => {
     document.getElementById('wh-grid-in').style.display  = tab==='in'  ? 'grid':'none';
     document.getElementById('wh-grid-out').style.display = tab==='out' ? 'grid':'none';
 };
+
+// ⭐ 新增：編輯紀錄功能 (支援商品與支出)
+let editTargetId = null;
+
+window.openEditModal = (id) => {
+    // 從現有的紀錄中找到這筆資料
+    const item = currentRecords.find(i => i.id === id);
+    if (!item) return;
+    editTargetId = id;
+    document.getElementById('edit-item-desc').value = item.desc;
+    document.getElementById('edit-item-amount').value = item.amount;
+    document.getElementById('edit-item-overlay').style.display = 'flex';
+};
+
+window.closeEditModal = () => {
+    document.getElementById('edit-item-overlay').style.display = 'none';
+    editTargetId = null;
+};
+
+window.submitEditItem = async () => {
+    if (!editTargetId) return;
+    const newDesc = document.getElementById('edit-item-desc').value.trim();
+    const newAmount = Number(document.getElementById('edit-item-amount').value);
+    
+    if (!newDesc || newAmount < 0) return appAlert('請輸入正確的名稱與金額！');
+    
+    const btn = document.querySelector('#edit-item-overlay .btn-modal-ok');
+    const originalText = btn.innerText;
+    btn.innerText = '儲存中...';
+    btn.disabled = true;
+
+    try {
+        // 更新到資料庫
+        await updateDoc(doc(db, 'records', editTargetId), {
+            desc: newDesc,
+            amount: newAmount
+        });
+        document.getElementById('edit-item-overlay').style.display = 'none';
+        await appAlert('修改成功！✅');
+        
+        // 重新讀取，全部的利潤與圖表會自動根據新成本重新計算
+        loadDashboard(); 
+    } catch (error) {
+        appAlert('修改失敗，請檢查網路連線。');
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+        editTargetId = null;
+    }
+};
 function renderWarehouse() {
     const inList  = inventory.filter(p => !p.isUsed);
     const outList = inventory.filter(p =>  p.isUsed);
+
+    // ⭐ 新增排序邏輯：把在庫清單先倒序(新的在前)，再把「檯面上的獎品」移到最上面
+    let sortedInList = inList.slice().reverse();
+    sortedInList.sort((a, b) => {
+        const aOnBoard = boardStats.curPrizeIds.includes(a.id) ? 1 : 0;
+        const bOnBoard = boardStats.curPrizeIds.includes(b.id) ? 1 : 0;
+        return bOnBoard - aOnBoard; // 狀態為 1 的排在前面
+    });
+
+    let sortedOutList = outList.slice().reverse();
+
     const renderGrid = (list, isUsed) => !list.length
         ? `<div style="grid-column:span 2;text-align:center;padding:40px;color:#A8A29E;font-weight:900;">${isUsed?'尚無出庫紀錄':'倉庫是空的'}</div>`
-        : list.slice().reverse().map(p => {
-            const badgeText = p.status === 'sold' ? '已售出' : (isUsed ? '已刮出' : '在庫');
-            const badgeClass = p.status === 'sold' ? 'badge-sold' : (isUsed ? 'badge-out' : 'badge-in');
+        : list.map(p => {
+            // ⭐ 判斷是否為目前檯面上的大獎
+            const isOnBoard = !isUsed && boardStats.curPrizeIds.includes(p.id);
+            
+            let badgeText = '在庫';
+            let badgeClass = 'badge-in';
+            
+            // ⭐ 決定標籤顯示文字與樣式
+            if (p.status === 'sold') {
+                badgeText = '已售出';
+                badgeClass = 'badge-sold';
+            } else if (isUsed) {
+                badgeText = '已刮出';
+                badgeClass = 'badge-out';
+            } else if (isOnBoard) {
+                badgeText = '🔥 機台獎項';
+                badgeClass = 'badge-onboard'; 
+            }
+
+            // 如果是機台獎項，讓外框變成橘色凸顯
+            const borderStyle = isOnBoard ? 'border-color:#FB923C; box-shadow:0 0 8px rgba(251,146,60,0.3);' : '';
+
             return `
-            <div class="inv-item ${isUsed?'used-out':''}">
+            <div class="inv-item ${isUsed?'used-out':''}" style="${borderStyle}">
                 <img src="${p.img||'https://via.placeholder.com/150?text=No+Photo'}" class="inv-item-img">
                 <div class="inv-item-info">
                     <span class="inv-badge ${badgeClass}">${badgeText}</span>
@@ -643,10 +752,12 @@ function renderWarehouse() {
                     <div class="inv-date">入庫：${p.date}</div>
                 </div>
                 ${isUsed ? `<div class="restore-btn-mini" onclick="restorePrize('${p.id}')" title="放回在庫"><i class="fa-solid fa-arrow-rotate-left"></i></div>` : ''}
+                <div class="edit-btn-mini" style="right: ${isUsed ? '69px' : '38px'};" onclick="openEditModal('${p.id}')" title="編輯修改"><i class="fa-solid fa-pen"></i></div>
                 <div class="del-btn-mini" onclick="deleteRec('${p.id}')"><i class="fa-solid fa-trash-alt"></i></div>
             </div>`}).join('');
-    document.getElementById('wh-grid-in').innerHTML  = renderGrid(inList,  false);
-    document.getElementById('wh-grid-out').innerHTML = renderGrid(outList, true);
+
+    document.getElementById('wh-grid-in').innerHTML  = renderGrid(sortedInList,  false);
+    document.getElementById('wh-grid-out').innerHTML = renderGrid(sortedOutList, true);
 }
 
 window.restorePrize = async (id) => {
@@ -1040,7 +1151,7 @@ async function loadDashboard() {
             scratch_reset:  { color:'text-purple', icon:'🏆', val: d => '結清紀錄' },
         };
 
-        const dailyRecs = records.filter(r => r.date === viewDate).sort((a,b) => b.timestamp - a.timestamp);
+       const dailyRecs = records.filter(r => r.date === viewDate).sort((a,b) => b.timestamp - a.timestamp);
         list.innerHTML = dailyRecs.map(data => {
             if (data.isPrize && !data.isUsed) return '';
             
@@ -1049,6 +1160,11 @@ async function loadDashboard() {
             
             const t = typeMap[tType]; if (!t) return '';
             const mBadge = currentMachineId === 'ALL' ? (data.machineId === 'B' ? '[🅱️ B號台] ' : '[🅰️ A號台] ') : '';
+            
+            // ⭐ 這裡新增了判斷：如果是商品或支出，就顯示藍色畫筆按鈕
+            const canEdit = data.isPrize || data.type === 'rent';
+            const editHtml = canEdit ? `<i class="fa-solid fa-pen" style="color:#3B82F6;margin-left:15px;cursor:pointer;flex-shrink:0;" onclick="openEditModal('${data.id}')"></i>` : '';
+
             return `<div class="record-item">
                 <div style="font-size:22px;margin-right:12px;">${t.icon}</div>
                 <div class="record-info">
@@ -1056,6 +1172,7 @@ async function loadDashboard() {
                     <div class="record-date">${data.date}</div>
                 </div>
                 <div class="record-val ${t.color}">${t.val(data)}</div>
+                ${editHtml}
                 <i class="fa-solid fa-trash-alt" style="color:#FCA5A5;margin-left:15px;cursor:pointer;flex-shrink:0;" onclick="deleteRec('${data.id}')"></i>
             </div>`;
         }).join('') || `<p style="text-align:center;padding:50px;color:#A8A29E;">${viewDate} 沒有紀錄</p>`;
@@ -1100,7 +1217,8 @@ window.submitInventory = async (btn) => {
             await uploadBytes(sRef, file); 
             imgUrl = await getDownloadURL(sRef);
         }
-        await addDoc(collection(db,'records'), { machineId: currentMachineId, type:'cost', isPrize:true, isUsed:false, status:'in_stock', date, amount, desc, img:imgUrl, timestamp:Date.now() });
+      const nowTs = getTimestampByDate(date);
+await addDoc(collection(db,'records'), { machineId: currentMachineId, type:'cost', isPrize:true, isUsed:false, status:'in_stock', date, amount, desc, img:imgUrl, timestamp: nowTs });
 
         ['inv-desc','inv-amount'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('inv-photo').value = '';
@@ -1125,7 +1243,7 @@ window.submitDailyUpdate = async () => {
     const incAmt = Number(document.getElementById('daily-income').value);
     const totalHoles = Number(document.getElementById('daily-holes').value);
     if (!date) return appAlert('請選擇日期');
-    const now = Date.now();
+   const now = getTimestampByDate(date);
     if (incAmt > 0) await addDoc(collection(db,'records'), { machineId: currentMachineId, type:'income', date, amount:incAmt, desc:'每日收幣', timestamp:now });
     if (totalHoles > 0) {
         const increment = totalHoles - boardStats.lastGlobalHoles;
@@ -1144,7 +1262,8 @@ window.submitRent = async () => {
     const amount = Number(document.getElementById('rnt-amount').value);
     const desc = document.getElementById('rnt-desc').value.trim() || '支出';
     if (!date || amount <= 0) return appAlert('請填寫日期與金額');
-    await addDoc(collection(db,'records'), { machineId: currentMachineId, type:'rent', date, amount, desc, timestamp:Date.now() });
+    const nowTs = getTimestampByDate(date);
+await addDoc(collection(db,'records'), { machineId: currentMachineId, type:'rent', date, amount, desc, timestamp: nowTs });
     document.getElementById('rnt-amount').value = ''; document.getElementById('rnt-desc').value = '';
     await appAlert('已紀錄支出 ✅'); loadDashboard();
     switchPage('home', document.querySelectorAll('.nav-item')[0]);
@@ -1164,7 +1283,7 @@ window.submitScratch = async () => {
     inventory.forEach(p => { if (boardStats.curPrizeIds.includes(p.id)) prizeCost += p.amount; });
     const profit = boardStats.income - prizeCost;
 
-    const now = Date.now();
+    const now = getTimestampByDate(date);
     for (const id of boardStats.curPrizeIds) await updateDoc(doc(db,'records',id), { isUsed: true, status: 'scratched' });
 
     const newNames = inventory.filter(p => selectedStartIds.includes(p.id)).map(p => p.desc);
@@ -1198,7 +1317,8 @@ function renderSellPicker() {
     const el = document.getElementById('sell-item-picker');
     el.innerHTML = '';
     inventory.forEach(p => {
-        if (!p.isUsed) {
+        // ⭐ 新增判斷：必須「未出庫(!p.isUsed)」且「不在目前檯面的大獎名單中」
+        if (!p.isUsed && !boardStats.curPrizeIds.includes(p.id)) {
             const sel = selectedSellIds.includes(p.id);
             el.appendChild(chip(p, () => {
                 const idx = selectedSellIds.indexOf(p.id);
@@ -1210,7 +1330,6 @@ function renderSellPicker() {
     });
     if(el.innerHTML === '') el.innerHTML = '<div style="grid-column:span 3;text-align:center;color:#A8A29E;font-size:14px;padding:20px;">倉庫內目前沒有可以賣出的商品</div>';
 }
-
 window.submitSell = async (btn) => {
     if(currentMachineId === 'ALL') return appAlert('合併模式下無法賣出！<br>請先在上方切換到特定機台。');
     const date = document.getElementById('sell-date').value;
@@ -1228,7 +1347,7 @@ window.submitSell = async (btn) => {
     btn.disabled = true;
 
     try {
-        const now = Date.now();
+        const now = getTimestampByDate(date);
         let names = [];
 
         // 1. 標記已售出並計算總成本
